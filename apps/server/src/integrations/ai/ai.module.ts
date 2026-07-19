@@ -19,7 +19,7 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
-import { NestKyselyModule } from 'nestjs-kysely';
+import { KyselyModule } from 'nestjs-kysely';
 import { AiPocClient } from './ai.client';
 import { AiReviewEmitter } from './ai-review.emitter';
 import { AiReviewProcessor } from './ai-review.processor';
@@ -32,7 +32,7 @@ import { AiReviewProcessor } from './ai-review.processor';
     }),
     ConfigModule,
     BullModule,
-    NestKyselyModule,
+    KyselyModule,
   ],
   providers: [AiPocClient, AiReviewEmitter, AiReviewProcessor],
   exports: [AiPocClient, AiReviewEmitter],

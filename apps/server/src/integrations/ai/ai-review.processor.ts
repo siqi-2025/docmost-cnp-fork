@@ -60,9 +60,14 @@ export class AiReviewProcessor extends WorkerHost {
     const { commentId } = data;
 
     // 1. 状态置为 reviewing（防并发）
+    // 注：db.d.ts 是 codegen 产物，迁移后未重新 codegen；
+    //   snake_case AI 字段不在编译期类型里，用 snake + DB 字段名写入
     await dbOrTx(this.db)
-      .updateTable('comments')
-      .set({ aiReviewStatus: 'reviewing', updatedAt: new Date() })
+      .updateTable('comments' as any)
+      .set({
+        ai_review_status: 'reviewing',
+        updated_at: new Date(),
+      } as any)
       .where('id', '=', commentId)
       .execute();
 
@@ -77,12 +82,12 @@ export class AiReviewProcessor extends WorkerHost {
     } catch (e) {
       this.logger.error(`AI review failed for comment ${commentId}: ${(e as Error).message}`);
       await dbOrTx(this.db)
-        .updateTable('comments')
+        .updateTable('comments' as any)
         .set({
-          aiReviewStatus: 'failed',
-          aiReviewedAt: new Date(),
-          updatedAt: new Date(),
-        })
+          ai_review_status: 'failed',
+          ai_reviewed_at: new Date(),
+          updated_at: new Date(),
+        } as any)
         .where('id', '=', commentId)
         .execute();
       return;
@@ -91,27 +96,27 @@ export class AiReviewProcessor extends WorkerHost {
     // 3. 写回 DB
     if (!result.ok) {
       await dbOrTx(this.db)
-        .updateTable('comments')
+        .updateTable('comments' as any)
         .set({
-          aiReviewStatus: 'failed',
-          aiReviewedAt: new Date(),
-          aiReviewSuggestion: JSON.stringify({ error: result.errorMessage }),
-          updatedAt: new Date(),
-        })
+          ai_review_status: 'failed',
+          ai_reviewed_at: new Date(),
+          ai_review_suggestion: JSON.stringify({ error: result.errorMessage }),
+          updated_at: new Date(),
+        } as any)
         .where('id', '=', commentId)
         .execute();
       return;
     }
 
     await dbOrTx(this.db)
-      .updateTable('comments')
+      .updateTable('comments' as any)
       .set({
-        aiReviewStatus: 'completed',
-        aiReviewSuggestion: JSON.stringify(result.stored),
-        aiReviewAccount: JSON.stringify(result.provider ?? {}),
-        aiReviewedAt: new Date(),
-        updatedAt: new Date(),
-      })
+        ai_review_status: 'completed',
+        ai_review_suggestion: JSON.stringify(result.stored),
+        ai_review_account: JSON.stringify(result.provider ?? {}),
+        ai_reviewed_at: new Date(),
+        updated_at: new Date(),
+      } as any)
       .where('id', '=', commentId)
       .execute();
 

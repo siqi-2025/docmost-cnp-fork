@@ -196,7 +196,8 @@ export class CommentService {
    * 后续可扩展成 table-driven 或 workspace-level config。
    */
   private inferReviewMode(page: Page): 'URS' | 'FRS' | 'TC' | 'GENERAL' {
-    const hint = `${page.slug ?? ''} ${page.title ?? ''}`.toUpperCase();
+    // Page 类型没 slug 字段（pages 实体不带），仅以 title 为线索
+    const hint = `${page.title ?? ''}`.toUpperCase();
     if (/\bURS\b|用户需求/.test(hint)) return 'URS';
     if (/\bFRS\b|功能需求/.test(hint)) return 'FRS';
     if (/\bTC\b|测试用例|TEST\s*CASE/.test(hint)) return 'TC';
