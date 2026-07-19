@@ -1,0 +1,46 @@
+.row {
+  margin-top: 6px;
+  align-items: center;
+}
+
+.badge {
+  text-transform: none;
+  font-weight: 500;
+  max-width: 100%;
+}
+
+.summary {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+.provider {
+  font-style: italic;
+  opacity: 0.85;
+}
+
+.warnIcon {
+  color: var(--mantine-color-orange-7);
+  display: inline-flex;
+  align-items: center;
+}
+
+.retryBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: var(--mantine-radius-sm);
+  color: var(--mantine-color-blue-7);
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background-color: light-dark(
+      var(--mantine-color-blue-0),
+      var(--mantine-color-dark-6)
+    );
+  }
+}

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>CommentAiBadge — 5 状态预览 (cnp review enhancement)</title>
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --card-bg: #ffffff;
+    --border: #e1e5ea;
+    --text: #1f2328;
+    --muted: #6a737d;
+    --critical-bg: #ffe3e3; --critical-fg: #c92a2a; --critical-border: #ffa8a8;
+    --major-bg: #ffe8cc;    --major-fg: #d9480f;   --major-border: #ffc078;
+    --minor-bg: #fff3bf;    --minor-fg: #b08900;   --minor-border: #ffe066;
+    --info-bg: #e9ecef;     --info-fg: #495057;    --info-border: #ced4da;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 32px 16px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .card h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 12px;
+    letter-spacing: 0.5px;
+  }
+  .comment {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #228be6; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; flex-shrink: 0;
+  }
+  .comment-body { flex: 1; min-width: 0; }
+  .author-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+  }
+  .author { font-weight: 600; font-size: 13px; }
+  .time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .content {
+    margin-top: 6px;
+    font-size: 13px;
+    background: #f8f9fa;
+    border-left: 2px solid #ced4da;
+    padding: 6px 8px;
+    border-radius: 0 4px 4px 0;
+  }
+
+  /* AI row container */
+  .ai-row { margin-top: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+  /* pending / reviewing */
+  .spinner {
+    display: inline-block; width: 10px; height: 10px;
+    border: 2px solid #ddd; border-top-color: #7950f2;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ai-text { color: var(--muted); font-size: 12px; }
+
+  /* completed badges */
+  .ai-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .ai-badge .icon { font-size: 11px; }
+  .ai-badge .summary { color: var(--muted); font-weight: 400;
+    max-width: 280px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; display: inline-block; vertical-align: bottom; }
+  .ai-badge.critical { background: var(--critical-bg); color: var(--critical-fg); border-color: var(--critical-border); }
+  .ai-badge.major    { background: var(--major-bg);    color: var(--major-fg);    border-color: var(--major-border); }
+  .ai-badge.minor    { background: var(--minor-bg);    color: var(--minor-fg);    border-color: var(--minor-border); }
+  .ai-badge.info     { background: var(--info-bg);     color: var(--info-fg);     border-color: var(--info-border); }
+  .ai-provider {
+    font-size: 11px; color: var(--muted); font-style: italic;
+    border-bottom: 1px dotted #adb5bd;
+  }
+
+  /* failed */
+  .ai-warn { color: #d9480f; display: inline-flex; align-items: center; }
+  .ai-warn svg { width: 14px; height: 14px; }
+  .ai-retry {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 6px; border-radius: 4px;
+    color: #1971c2; font-size: 11px; font-weight: 500;
+    background: #e7f5ff;
+    cursor: pointer;
+  }
+
+  /* modal preview */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10; padding: 16px;
+  }
+  .modal {
+    background: #fff; border-radius: 8px;
+    max-width: 560px; width: 100%;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.18);
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .modal-header .title { font-weight: 600; font-size: 14px; }
+  .modal-body { padding: 16px 18px; }
+  .modal-body .section { margin-bottom: 14px; }
+  .modal-body .label {
+    font-size: 10px; text-transform: uppercase; color: var(--muted);
+    letter-spacing: 0.5px; font-weight: 600; margin-bottom: 4px;
+  }
+  .modal-body .text { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  .modal-body ul { margin: 0; padding-left: 20px; font-size: 13px; }
+  .modal-body .progress {
+    height: 6px; border-radius: 99px; background: #e9ecef; overflow: hidden;
+  }
+  .modal-body .progress > div { height: 100%; }
+  .modal-body .progress > div.critical { background: var(--critical-fg); }
+  .modal-body .progress > div.major    { background: var(--major-fg); }
+  .modal-body .progress > div.minor    { background: var(--minor-fg); }
+  .modal-body .progress > div.info     { background: var(--info-fg); }
+  .modal-body .meta {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .modal-body .meta .label { margin-bottom: 2px; }
+  .modal-body .meta .code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; background: #f1f3f5; padding: 2px 6px; border-radius: 3px;
+  }
+  .modal-footer {
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 4px;
+    font-size: 12px; font-weight: 500;
+    border: 1px solid var(--border);
+    background: #fff; cursor: pointer;
+  }
+  .btn.primary { background: #228be6; color: #fff; border-color: #228be6; }
+  .btn.light { background: #e7f5ff; color: #1971c2; border-color: #a5d8ff; }
+  .footer-note { text-align: center; color: var(--muted); font-size: 11px; margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<h1>CommentAiBadge — 5 状态可视化</h1>
+<p class="lead">Docmost 评论 AI 评审徽章（cnp review enhancement） — 嵌入在 CommentListItem 中，位于作者/时间下方</p>
+
+<div class="grid">
+
+  <!-- 1. pending / reviewing -->
+  <div class="card">
+    <h2>1. pending / reviewing — 加载中</h2>
+    <div class="comment">
+      <div class="avatar">李</div>
+      <div class="comment-body">
+        <div class="author-row">
+          <div class="author">李四</div>
+        </div>
+        <div class="time">2 分钟前</div>
+        <div class="content">建议在第 3 段补充制动距离的实测数据来源。</div>
+        <div class="ai-row">
+          <span class="spinner"></span>
+          <span class="ai-text">AI 评审中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. completed (critical) -->
+  <div class="card">
+    <h2>2. completed — critical（红）</h2>
+    <div class="comment">
+      <div class="avatar">王</div>
+      <div class="comment-body">
+        <div class="author-row">
+          <div class="author">王五</div>
+        </div>
+        <div class="time">10 分钟前</div>
+        <div class="content">"紧急制动距离不得超过 1200m"，需明确引用 TB/T 规范条款。</div>
+        <div class="ai-row">
+          <span class="ai-badge critical">
+            <span class="icon">✦</span>必改
+            <span class="summary">缺少强制标准引用，建议补充 TB/T 1234-2020 第 5.2 条</span>
+          </span>
+          <span class="ai-provider" title="by minimax-M2.7-highspeed via account #1">
+            by minimax-M2.7-highspeed via account #1
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. completed (major + minor + info mix shown via the single highest severity) -->
+  <div class="card">
+    <h2>3. completed — major（橙）</h2>
+    <div class="comment">
+      <div class="avatar">张</div>
+      <div class="comment-body">
+        <div class="author-row">
+          <div class="author">张三</div>
+        </div>
+        <div class="time">1 小时前</div>
+        <div class="content">请确认牵引计算书版本是否最新。</div>
+        <div class="ai-row">
+          <span class="ai-badge major">
+            <span class="icon">✦</span>建议
+            <span class="summary">牵引计算引用版本 v2.3 与附录不一致，建议核对</span>
+          </span>
+          <span class="ai-provider" title="by qwen-plus via account #2">
+            by qwen-plus via account #2
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. completed (minor) -->
+  <div class="card">
+    <h2>4. completed — minor（黄）/ info（灰）</h2>
+    <div class="comment">
+      <div class="avatar">陈</div>
+      <div class="comment-body">
+        <div class="author-row">
+          <div class="author">陈六</div>
+        </div>
+        <div class="time">昨天</div>
+        <div class="content">术语"动力包"在第 1 章首次出现，建议给出英文对照。</div>
+        <div class="ai-row">
+          <span class="ai-badge minor">
+            <span class="icon">✦</span>建议
+            <span class="summary">术语首次出现未给出英文标注</span>
+          </span>
+          <span class="ai-provider">by minimax-M2.7-highspeed via account #1</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px; padding-top:12px; border-top:1px dashed #e1e5ea;">
+      <div class="comment">
+        <div class="avatar" style="background:#868e96">赵</div>
+        <div class="comment-body">
+          <div class="author-row"><div class="author">赵七</div></div>
+          <div class="time">昨天</div>
+          <div class="content">关于制动试验数据。</div>
+          <div class="ai-row">
+            <span class="ai-badge info">
+              <span class="icon">✦</span>通过
+              <span class="summary">无问题</span>
+            </span>
+            <span class="ai-provider">by deepseek-v3 via account #3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. failed -->
+  <div class="card">
+    <h2>5. failed — 失败 + 重试</h2>
+    <div class="comment">
+      <div class="avatar" style="background:#fab005">钱</div>
+      <div class="comment-body">
+        <div class="author-row">
+          <div class="author">钱八</div>
+        </div>
+        <div class="time">刚刚</div>
+        <div class="content">该规范条款版本需要更新到 2024 版。</div>
+        <div class="ai-row">
+          <span class="ai-warn" title="AI 评审失败">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9"  x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </span>
+          <span class="ai-text">AI 评审失败，重试？</span>
+          <span class="ai-retry" title="重试 AI 评审">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none"
+                 stroke="currentColor" stroke-width="2.4"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            重试
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- skipped (renders nothing) -->
+  <div class="card">
+    <h2>6. skipped — 不渲染（基线对照）</h2>
+    <div class="comment">
+      <div class="avatar" style="background:#40c057">孙</div>
+      <div class="comment-body">
+        <div class="author-row"><div class="author">孙九</div></div>
+        <div class="time">3 天前</div>
+        <div class="content">已完成评审，无需 AI 复核。</div>
+        <!-- 徽章位置为空 — skipped 时 CommentAiBadge 返回 null -->
+        <div class="ai-row" style="min-height: 18px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="footer-note">点击 #2/#3 徽章区域会打开下方 suggestion 弹层（cnp review enhancement）</p>
+
+<!-- Modal preview (popped by clicking a critical/major badge) -->
+<div class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span style="color:#7950f2">✦</span>
+      <span class="title">AI 评审</span>
+      <span class="ai-badge critical" style="cursor:default;">
+        <span class="icon">✦</span>必改 · critical
+      </span>
+    </div>
+    <div class="modal-body">
+      <div class="section">
+        <div class="label">摘要</div>
+        <div class="text">缺少强制标准引用，建议补充 TB/T 1234-2020 第 5.2 条</div>
+      </div>
+      <div class="section">
+        <div class="label">详情</div>
+        <div class="text">当前条款"紧急制动距离不得超过 1200m"未注明出处，且
+1200m 数值与 TB/T 1234-2020 第 5.2 条"不大于 1100m"存在差异，
+需核实是否为更早版本或行业标准。</div>
+      </div>
+      <div class="section">
+        <div class="label">建议</div>
+        <div class="text">1) 明确引用 TB/T 1234-2020 第 5.2 条；
+2) 若使用企业内部标准，应在文档首部"引用文件"列出；
+3) 数值差异需提供测试报告依据。</div>
+      </div>
+      <div class="section">
+        <div class="label">参考标准</div>
+        <ul>
+          <li>TB/T 1234-2020 《动车组制动系统技术要求》第 5.2 条</li>
+          <li>GB/T 21561.1-2018 《动车组通用技术条件》</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <div class="label" style="margin:0;">置信度</div>
+          <div style="font-size:11px; color:var(--muted);">92%</div>
+        </div>
+        <div class="progress"><div class="critical" style="width:92%"></div></div>
+      </div>
+      <div class="meta">
+        <div>
+          <div class="label">模型</div>
+          <div class="code">minimax-M2.7-highspeed · 账号 #1</div>
+        </div>
+        <div>
+          <div class="label">评审时间</div>
+          <div style="font-size:12px;">2026-07-18 14:23:07</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn light">
+        <svg viewBox="0 0 24 24" width="11" height="11" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        复制为 Markdown
+      </button>
+      <button class="btn">关闭</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
