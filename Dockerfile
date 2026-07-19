@@ -14,6 +14,14 @@ RUN pnpm build
 
 FROM base AS installer
 
+# CKP 部署定制：用 aliyun Debian 镜像源（51AC 出口到 deb.debian.org 不稳）
+RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+     sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources; \
+   fi && \
+   if [ -f /etc/apt/sources.list ]; then \
+     sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list; \
+   fi
+
 RUN apt-get update \
   && apt-get install -y --no-install-recommends curl bash \
   && rm -rf /var/lib/apt/lists/*
